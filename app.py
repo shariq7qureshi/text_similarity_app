@@ -1,156 +1,344 @@
 import streamlit as st
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.decomposition import PCA
-import plotly.express as px
-import pandas as pd
 import numpy as np
+import plotly.graph_objects as go
+import plotly.express as px
+from sklearn.decomposition import PCA
+from sentence_transformers import SentenceTransformer
 
-# --- Page Configuration (Dark Theme setup) ---
-st.set_page_config(page_title="NLP Matrix Explorer", page_icon="🌌", layout="wide")
+# ----------------------------------------------------------------------------
+# PAGE CONFIG
+# ----------------------------------------------------------------------------
+st.set_page_config(
+    page_title="NeuroSim v4 | Cinematic 4D Spatial Explorer",
+    page_icon="🌌",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
-# --- Custom Cyberpunk/Neon CSS ---
+# ----------------------------------------------------------------------------
+# ADVANCED CINEMATIC DARK SPACE THEME + GLOWING MOON MESH
+# ----------------------------------------------------------------------------
 st.markdown("""
-    <style>
-    /* Dark background with neon accents */
-    .stApp {
-        background-color: #0d1117;
-        color: #c9d1d9;
-    }
-    h1, h2, h3 {
-        color: #58a6ff !important;
-        font-family: 'Courier New', Courier, monospace;
-    }
-    .neon-box {
-        background-color: #161b22; 
-        padding: 25px; 
-        border-radius: 12px; 
-        box-shadow: 0 0 15px rgba(88, 166, 255, 0.2); 
-        border: 1px solid #58a6ff;
-        color: #e6edf3;
-    }
-    .highlight {
-        color: #00ff00;
-        font-weight: bold;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Poppins:wght@300;400;600&display=swap');
 
-st.title("🌌 NLP Matrix: Semantic Similarity Engine")
-st.markdown("**Free Pretrained Model:** `all-MiniLM-L6-v2` | **Zero Preprocessing**")
-st.write("Enter text below to map semantics into multidimensional space.")
+html, body, [class*="css"]  {
+    font-family: 'Poppins', sans-serif;
+    color: #f1f0fa !important;
+}
 
-# --- Load Model ---
-@st.cache_resource
+h1, h2, h3, .hero-title, .section-header {
+    font-family: 'Orbitron', sans-serif;
+}
+
+/* Deep Space Background with a massive glowing Vector Moon simulation */
+.stApp {
+    background: radial-gradient(circle at 50% 120%, #150d2a 0%, #070714 60%, #020205 100%);
+    overflow-x: hidden;
+}
+
+/* Pseudo-element for the giant cinematic rotating moon / portal effect behind everything */
+.stApp::before {
+    content: "";
+    position: fixed;
+    bottom: -300px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 900px;
+    height: 900px;
+    background: radial-gradient(circle, rgba(168,85,247,0.12) 0%, rgba(56,189,248,0.05) 50%, transparent 70%);
+    border-radius: 50%;
+    box-shadow: 0 0 120px rgba(168,85,247,0.15), inset 0 0 80px rgba(56,189,248,0.1);
+    z-index: 0;
+    pointer-events: none;
+    animation: moonPulse 12s ease-in-out infinite alternate;
+}
+
+/* Ambient Floating Star Dust */
+.stApp::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: 
+        radial-gradient(1.5px 1.5px at 15% 20%, rgba(255,255,255,0.6), transparent),
+        radial-gradient(2px 2px at 80% 40%, rgba(168,85,247,0.4), transparent),
+        radial-gradient(1.5px 1.5px at 40% 70%, rgba(56,189,248,0.5), transparent),
+        radial-gradient(2.5px 2.5px at 70% 80%, rgba(236,72,153,0.4), transparent);
+    background-size: 150% 150%;
+    animation: celestialDrift 40s linear infinite;
+    z-index: 0;
+    pointer-events: none;
+}
+
+@keyframes moonPulse {
+    0% { transform: translateX(-50%) scale(1); filter: drop-shadow(0 0 40px rgba(168,85,247,0.1)); }
+    100% { transform: translateX(-50%) scale(1.08); filter: drop-shadow(0 0 90px rgba(56,189,248,0.25)); }
+}
+
+@keyframes celestialDrift {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 100% 100%; }
+}
+
+/* Sci-fi Interactive Clickable Hologram Boxes (Accordions / Details) */
+.holo-box {
+    background: rgba(10, 8, 28, 0.65);
+    border-radius: 16px;
+    border: 1px solid rgba(168, 85, 247, 0.25);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(168, 85, 247, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 10px 18px;
+    margin-bottom: 14px;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.holo-box:hover {
+    border-color: #38bdf8;
+    box-shadow: 0 0 25px rgba(56,189,248,0.35);
+    transform: translateY(-2px);
+}
+
+.hero-title {
+    font-weight: 900;
+    font-size: 3.5rem;
+    background: linear-gradient(135deg, #f3e8ff, #a855f7, #38bdf8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-align: center;
+    letter-spacing: 2px;
+    filter: drop-shadow(0 0 15px rgba(168,85,247,0.3));
+}
+
+.hero-sub {
+    text-align: center;
+    color: #93c5fd;
+    font-size: 1.1rem;
+    margin-bottom: 30px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+}
+
+.section-header {
+    font-size: 1.3rem;
+    color: #38bdf8;
+    text-shadow: 0 0 10px rgba(56,189,248,0.5);
+    border-bottom: 1px solid rgba(56,189,248,0.2);
+    padding-bottom: 8px;
+    margin-top: 25px;
+    margin-bottom: 15px;
+}
+
+/* Textarea Optimization */
+textarea, .stTextArea textarea {
+    background: rgba(5, 3, 15, 0.85) !important;
+    color: #ffffff !important;
+    font-size: 1.1rem !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(168, 85, 247, 0.5) !important;
+}
+
+/* Action Button Cyber Styling */
+div.stButton > button {
+    background: linear-gradient(135deg, #a855f7, #ec4899);
+    color: white;
+    font-family: 'Orbitron', sans-serif;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 0 15px rgba(168,85,247,0.4);
+    letter-spacing: 1px;
+}
+div.stButton > button:hover {
+    box-shadow: 0 0 30px rgba(236,72,153,0.7);
+    transform: scale(1.02);
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ----------------------------------------------------------------------------
+# HEADER & INTERACTIVE INTERFACE TITLE
+# ----------------------------------------------------------------------------
+st.markdown('<div class="hero-title">NEUROSIM v4</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero-sub">// 4D Spatial Core & Neural Matrix Terminal</div>', unsafe_allow_html=True)
+
+# ----------------------------------------------------------------------------
+# CORE MODEL CACHE
+# ----------------------------------------------------------------------------
+@st.cache_resource()
 def load_model():
-    return SentenceTransformer('all-MiniLM-L6-v2')
+    return SentenceTransformer("all-MiniLM-L6-v2")
 
 model = load_model()
 
-# --- User Input ---
-st.sidebar.markdown("### 📝 Text Input Terminal")
-default_text = "Quantum computing will change the future.\nArtificial intelligence is evolving rapidly.\nMachine learning models require huge data.\nI am enjoying my coffee right now.\nThe weather is slightly chilly today."
-user_input = st.sidebar.text_area("Input Sentences (One per line):", value=default_text, height=250)
-sentences = [s.strip() for s in user_input.split('\n') if s.strip()]
+# ----------------------------------------------------------------------------
+# TEXT INPUT CONTAINER
+# ----------------------------------------------------------------------------
+st.markdown('<div class="section-header">📡 [01] INJECT DATA VECTOR</div>', unsafe_allow_html=True)
 
-if len(sentences) < 3:
-    st.error("⚠️ Enter at least 3 sentences to generate the matrix.")
+default_text = """I love natural language processing
+Machine learning is fascinating
+I enjoy studying artificial intelligence
+The weather is nice today
+Deep learning models are powerful
+I went to the market to buy vegetables
+Neural networks can understand language"""
+
+with st.container():
+    user_text = st.text_area(
+        "Enter query sequence (Line 1) followed by target matrix nodes:",
+        value=default_text,
+        height=180,
+    )
+    run = st.button("CORE ANALYZE MATRIX")
+
+# ----------------------------------------------------------------------------
+# CALCULATION & GRID GENERATION
+# ----------------------------------------------------------------------------
+if run and user_text.strip():
+    lines = [l.strip() for l in user_text.split("\n") if l.strip()]
+    if len(lines) < 2:
+        st.warning("Terminal requires at least 1 query node and 1 target mesh.")
+        st.stop()
+
+    query = lines[0]
+    candidates = lines[1:]
+    all_items = [query] + candidates
+
+    # Embeddings Processing
+    embeddings = model.encode(all_items)
+    query_emb = embeddings[0]
+    cand_embs = embeddings[1:]
+
+    def cosine_sim(a, b):
+        return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+    sims = np.array([cosine_sim(query_emb, c) for c in cand_embs])
+    order = np.argsort(-sims)
+    
+    # Split interface layout into two high-tech columns
+    col_left, col_right = st.columns([1, 1])
+
+    with col_left:
+        st.markdown('<div class="section-header">🔮 [02] MULTIDIMENSIONAL ORBIT (4D HYPER-SPIN)</div>', unsafe_allow_html=True)
+        
+        # 4D PCA Reduction Engine
+        n_components = min(3, len(all_items))
+        pca = PCA(n_components=n_components)
+        reduced = pca.fit_transform(embeddings)
+        if reduced.shape[1] < 3:
+            pad = np.zeros((reduced.shape[0], 3 - reduced.shape[1]))
+            reduced = np.hstack([reduced, pad])
+
+        short_labels = [t if len(t) <= 22 else t[:20] + "…" for t in all_items]
+        colors = ["#ec4899"] + ["#38bdf8"] * len(candidates)
+        sizes = [24] + [15] * len(candidates)
+
+        # Generating 4D complex orbital projection path frames
+        frames = []
+        steps = 90 
+        for i in range(steps):
+            angle = (i / steps) * 2 * np.pi
+            frames.append(go.Frame(
+                layout=dict(
+                    scene_camera=dict(
+                        eye=dict(
+                            x=1.9 * np.cos(angle),
+                            y=1.9 * np.sin(angle),
+                            # 4D wave simulation: z axis tilts smoothly down and up during orbit rotation
+                            z=0.8 + 0.4 * np.sin(2 * angle) 
+                        )
+                    )
+                ),
+                name=f"f4d_{i}"
+            ))
+
+        fig4d = go.Figure(
+            data=[go.Scatter3d(
+                x=reduced[:, 0], y=reduced[:, 1], z=reduced[:, 2],
+                mode="markers+text",
+                text=short_labels,
+                textposition="top center",
+                marker=dict(size=sizes, color=colors, opacity=0.95, line=dict(width=1.5, color="#ffffff")),
+            )],
+            frames=frames
+        )
+        
+        fig4d.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            scene=dict(
+                xaxis=dict(title="DIM_X", showgrid=False, backgroundcolor="rgba(0,0,0,0)"),
+                yaxis=dict(title="DIM_Y", showgrid=False, backgroundcolor="rgba(0,0,0,0)"),
+                zaxis=dict(title="DIM_Z", showgrid=False, backgroundcolor="rgba(0,0,0,0)"),
+            ),
+            height=600,
+            margin=dict(l=0, r=0, t=0, b=0),
+            scene_camera=dict(eye=dict(x=1.9, y=0.0, z=0.8)),
+            updatemenus=[dict(
+                type="buttons",
+                showactive=False,
+                x=0.02, y=0.02,
+                buttons=[
+                    dict(
+                        label="⚡ INITIATE 4D HYPER-SPIN",
+                        method="animate",
+                        args=[None, dict(
+                            frame=dict(duration=40, redraw=False),
+                            fromcurrent=True,
+                            transition=dict(duration=0),
+                            loop=True
+                        )]
+                    )
+                ]
+            )]
+        )
+        st.plotly_chart(fig4d, use_container_width=True)
+
+    with col_right:
+        st.markdown('<div class="section-header">🎛️ [03] INTERACTIVE MATRIX NODES (CLICK TO OPEN)</div>', unsafe_allow_html=True)
+        st.caption("Boxes ke header par click karo details aur neural calculations toggle karne ke liye:")
+        
+        # Clickable Boxes Engine using HTML Details tags styled with glassmorphism CSS
+        for rank, idx in enumerate(order, start=1):
+            match_text = candidates[idx]
+            score = sims[idx]
+            
+            # Interactive Cyber Boxes HTML template
+            box_html = f"""
+            <div class="holo-box">
+                <details>
+                    <summary style="cursor: pointer; font-weight: 600; color: #f1f0fa; font-family: 'Orbitron', sans-serif;">
+                        NODE #{rank}: {match_text[:35]}... — <span style="color: #38bdf8;">SIM: {score:.4f}</span>
+                    </summary>
+                    <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); color: #c4b5fd; font-size: 0.9rem;">
+                        <strong>Full String:</strong> "{match_text}"<br>
+                        <strong>Vector Cluster Address:</strong> PCA_Coordinate_{[round(x, 2) for x in reduced[idx+1].tolist()]}<br>
+                        <strong>Status:</strong> Quantum Computed Semantic Connection Verified.
+                    </div>
+                </details>
+            </div>
+            """
+            st.markdown(box_html, unsafe_allow_html=True)
+
+    # Full Matrix Heatmap at the bottom over the deep dark moon core
+    st.markdown('<div class="section-header">🔥 [04] PAIRWISE QUANTUM MATRIX INTEGRATION</div>', unsafe_allow_html=True)
+    sim_matrix = np.zeros((len(all_items), len(all_items)))
+    for i in range(len(all_items)):
+        for j in range(len(all_items)):
+            sim_matrix[i, j] = cosine_sim(embeddings[i], embeddings[j])
+
+    fig_heat = go.Figure(data=go.Heatmap(
+        z=sim_matrix, x=short_labels, y=short_labels,
+        colorscale=[[0, "#05030f"], [0.5, "#a855f7"], [1, "#38bdf8"]],
+        zmin=0, zmax=1,
+    ))
+    fig_heat.update_layout(
+        template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        height=450, margin=dict(l=40, r=40, t=10, b=10)
+    )
+    st.plotly_chart(fig_heat, use_container_width=True)
+
 else:
-    # --- Generate Embeddings ---
-    embeddings = model.encode(sentences)
-    similarity_matrix = cosine_similarity(embeddings)
-    
-    st.divider()
-    
-    # --- GRAPHS SECTION ---
-    st.header("📊 Interactive Visualizations")
-    col1, col2 = st.columns(2)
-    
-    # 1. Bar Chart
-    with col1:
-        st.subheader("1. Proximity to Base Sentence")
-        base_sentence = sentences[0]
-        scores = similarity_matrix[0][1:]
-        comparison_sentences = sentences[1:]
-        
-        df_bar = pd.DataFrame({'Sentence': comparison_sentences, 'Similarity': scores})
-        df_bar = df_bar.sort_values('Similarity', ascending=False)
-        
-        fig_bar = px.bar(df_bar, x='Similarity', y='Sentence', orientation='h', 
-                         color='Similarity', color_continuous_scale='Tealgrn',
-                         title=f"Target: '{base_sentence}'")
-        fig_bar.update_layout(template="plotly_dark", plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-        st.plotly_chart(fig_bar, use_container_width=True)
-
-    # 2. Heatmap
-    with col2:
-        st.subheader("2. Pairwise Heatmap")
-        fig_heat = px.imshow(similarity_matrix,
-                             x=[f"S{i+1}" for i in range(len(sentences))],
-                             y=[f"S{i+1}" for i in range(len(sentences))],
-                             color_continuous_scale='Turbo',
-                             text_auto=".2f", aspect="auto",
-                             title="Full Similarity Matrix")
-        fig_heat.update_layout(template="plotly_dark", plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-        st.plotly_chart(fig_heat, use_container_width=True)
-
-    # 3. Embedding Plots (2D & 3D)
-    st.divider()
-    st.subheader("3. Embedding Projections")
-    
-    # Need at least 3 samples for 3D PCA
-    n_comp = 3 if len(sentences) >= 3 else 2
-    pca = PCA(n_components=n_comp)
-    embeddings_pca = pca.fit_transform(embeddings)
-    
-    df_pca = pd.DataFrame({
-        'Sentence': sentences,
-        'Label': [f"S{i+1}" for i in range(len(sentences))],
-        'PCA1': embeddings_pca[:, 0],
-        'PCA2': embeddings_pca[:, 1]
-    })
-    
-    col3, col4 = st.columns(2)
-    
-    with col3:
-        st.markdown("**2D Projection (Required)**")
-        fig_pca2d = px.scatter(df_pca, x='PCA1', y='PCA2', text='Label', color='Label',
-                             color_discrete_sequence=px.colors.qualitative.Set3,
-                             size_max=60, title="2D Semantic Space")
-        fig_pca2d.update_traces(marker=dict(size=12, line=dict(width=1, color='White')), textposition='top center')
-        fig_pca2d.update_layout(template="plotly_dark", plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', showlegend=False)
-        st.plotly_chart(fig_pca2d, use_container_width=True)
-        
-    with col4:
-        st.markdown("**3D Interactive Projection (Ghoomne Wala!)**")
-        if n_comp == 3:
-            df_pca['PCA3'] = embeddings_pca[:, 2]
-            fig_pca3d = px.scatter_3d(df_pca, x='PCA1', y='PCA2', z='PCA3', text='Label', color='Label',
-                                      color_discrete_sequence=px.colors.qualitative.Set3,
-                                      title="3D Semantic Space (Click & Drag to Rotate)")
-            fig_pca3d.update_traces(marker=dict(size=8))
-            fig_pca3d.update_layout(template="plotly_dark", plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', showlegend=False)
-            st.plotly_chart(fig_pca3d, use_container_width=True)
-        else:
-            st.warning("Need at least 3 sentences for 3D visualization.")
-
-    st.divider()
-
-    # --- PAUL'S CRITICAL THINKING STANDARDS ---
-    st.header("🧠 Paul’s Critical Thinking Standards Analysis")
-    st.markdown('<div class="neon-box">', unsafe_allow_html=True)
-    
-    st.markdown(f"**1. Clarity:** The input is an array of {len(sentences)} raw text strings. The output demonstrates how a neural network interprets their semantic meaning as mathematical vectors, showing distance/similarity.")
-    st.markdown("**2. Accuracy:** Everything is computed strictly using the `all-MiniLM-L6-v2` embedding model. There are no manual modifications or unsupported adjustments to the similarity scores.")
-    
-    np.fill_diagonal(similarity_matrix, -1)
-    max_idx = np.unravel_index(np.argmax(similarity_matrix, axis=None), similarity_matrix.shape)
-    max_score = similarity_matrix[max_idx]
-    
-    st.markdown(f"**3. Precision:** The analysis avoids vague terms. We can precisely state that S{max_idx[0]+1} and S{max_idx[1]+1} have a cosine similarity of <span class='highlight'>{max_score:.4f}</span>.", unsafe_allow_html=True)
-    st.markdown("**4. Relevance:** All visual data aligns directly with the mathematical outputs. The bar chart isolates one context, the heatmap shows the holistic view, and the PCA plots map the spatial relationships of the text.")
-    st.markdown(f"**5. Logic:** The model logically assigned the highest similarity score ({max_score:.4f}) to the texts that share contextual overlap, proving the embeddings capture meaning, not just exact word matching.")
-    st.markdown("**6. Significance:** The most significant insight comes from the spatial clustering in the PCA plots, where technologically aligned sentences cluster together, separating completely from casual topics like coffee or weather.")
-    st.markdown("**7. Fairness:** Limitation check: This pre-trained model is fundamentally a lightweight version. It lacks the capacity to fairly evaluate multilingual text, complex sarcasm, or highly nuanced academic jargon without further fine-tuning.")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.info("🌌 Terminal Waiting... Click **CORE ANALYZE MATRIX** to synthesize the space environment.")
